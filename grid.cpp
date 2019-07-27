@@ -83,8 +83,6 @@ public:
 	AbstractGrid( uint rows,  uint cols) : _rows(rows), _cols(cols) {
 		_grid = new Cell[_rows * _cols];
 		_rnd = std::mt19937(size());
-		initGrid();
-		configureCells();
 	}
 
 	~AbstractGrid() {
@@ -96,8 +94,9 @@ public:
 
 	virtual void initGrid() = 0;
 	virtual void configureCells() = 0;
+	friend std::ostream& operator<<(std::ostream& out, const AbstractGrid& grid);
 
-	Cell *getCell( uint row,  uint col) {
+	Cell *getCell( uint row,  uint col) const {
 		if (row < 0 || row >= _rows || col < 0 || col >= _cols)
 			return nullptr;
 		return &_grid[row * _rows + col];
@@ -120,11 +119,44 @@ private:
 	std::mt19937 _rnd;
 };
 
+std::ostream& operator<<(std::ostream& out, const AbstractGrid& grid) {
+	out << "+";
+	for (uint k = 0; k < grid._cols; k++)
+		out << "---+";
+	out << "\n";
+
+	for (uint i = 0; i < grid._rows; i++) {
+		out << "|";
+		for (uint j = 0; j < grid._cols; j++) {
+			out << "   ";
+			if (grid.getCell(i, j)->_eastLinked)
+				out << " ";
+			else
+				out << "|";
+		}
+		out << "\n";
+		out << "+";
+		for (uint j = 0; j < grid._cols; j++) {
+			if (grid.getCell(i, j)->_southLinked)
+				out << "   ";
+			else
+				out << "---";
+			out << "+";
+		}
+		out << "\n";
+	}
+
+	return out;
+}
+
 class SimpleGrid : public AbstractGrid {
 public:
 	SimpleGrid() : AbstractGrid() {}
 
-	SimpleGrid(uint _rows, uint _cols) : AbstractGrid(_rows, _cols) {}
+	SimpleGrid(uint _rows, uint _cols) : AbstractGrid(_rows, _cols) {
+		initGrid();
+		configureCells();
+	}
 
 private:
 	void initGrid() {
@@ -207,5 +239,13 @@ private:
 };
 
 int main() {
+	SimpleGrid x(4, 4);
+
+	Cell *ptr = x.getCell(1, 1);
+
+	ptr->link(ptr->_north);
+
+	std::cout << x;
+
 	return 0;
 }
