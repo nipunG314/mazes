@@ -1,123 +1,123 @@
-#include <random>
-#include <iostream>
+#include "grid.h"
+#include "simple-grid.h"
 
-typedef  unsigned int uint;
-
-class Cell {
-public:
-
-	Cell() : _row(0), _col(0),
-		_north(nullptr), _east(nullptr), _south(nullptr), _west(nullptr),
-		_northLinked(false), _eastLinked(false), _southLinked(false), _westLinked(false) {}
-
-	Cell( uint row,  uint col) : _row(row), _col(col),
-		_north(nullptr), _east(nullptr), _south(nullptr), _west(nullptr),
-		_northLinked(false), _eastLinked(false), _southLinked(false), _westLinked(false) {}
-
-	bool link(Cell *cell, bool biDir = true) {
-		if (cell == _north) {
-			_northLinked = true;
-			if (biDir)
-				cell->_southLinked = true;
-			return true;
-		}
-		if (cell == _south) {
-			_southLinked = true;
-			if (biDir)
-				cell->_northLinked = true;
-			return true;
-		}
-		if (cell == _east) {
-			_eastLinked = true;
-			if (biDir)
-				cell->_westLinked = true;
-			return true;
-		}
-		if (cell == _west) {
-			_westLinked = true;
-			if (biDir)
-				cell->_eastLinked = true;
-			return true;
-		}
-		return false;
+bool Cell::link(Cell *cell, bool biDir) {
+	if (cell == _north) {
+		_northLinked = true;
+		if (biDir)
+			cell->_southLinked = true;
+		return true;
 	}
-
-	bool unlink(Cell *cell) {
-		if (cell == _north) {
-			_northLinked = false;
-			cell->_southLinked = false;
-			return true;
-		}
-		if (cell == _south) {
-			_southLinked = false;
-			cell->_northLinked = false;
-			return true;
-		}
-		if (cell == _east) {
-			_eastLinked = false;
-			cell->_westLinked = false;
-			return true;
-		}
-		if (cell == _west) {
-			_westLinked = false;
-			cell->_eastLinked = false;
-			return true;
-		}
-		return false;
+	if (cell == _south) {
+		_southLinked = true;
+		if (biDir)
+			cell->_northLinked = true;
+		return true;
 	}
-
-	bool linked(Cell *cell) {
-		return (_northLinked || _southLinked || _eastLinked || _westLinked);
+	if (cell == _east) {
+		_eastLinked = true;
+		if (biDir)
+			cell->_westLinked = true;
+		return true;
 	}
-
-	 uint _row, _col;
-	Cell *_north, *_east, *_south, *_west;
-	bool _northLinked, _eastLinked, _southLinked, _westLinked;
-};
-
-class AbstractGrid {
-public:
-
-	AbstractGrid() : _rows(0), _cols(0), _grid(nullptr) {}
-
-	AbstractGrid( uint rows,  uint cols) : _rows(rows), _cols(cols) {
-		_grid = new Cell[_rows * _cols];
-		_rnd = std::mt19937(size());
+	if (cell == _west) {
+		_westLinked = true;
+		if (biDir)
+			cell->_eastLinked = true;
+		return true;
 	}
+	return false;
+}
 
-	~AbstractGrid() {
-		if (_grid != nullptr) {
-			delete _grid;
-			_grid = nullptr;
+bool Cell::unlink(Cell *cell) {
+	if (cell == _north) {
+		_northLinked = false;
+		cell->_southLinked = false;
+		return true;
+	}
+	if (cell == _south) {
+		_southLinked = false;
+		cell->_northLinked = false;
+		return true;
+	}
+	if (cell == _east) {
+		_eastLinked = false;
+		cell->_westLinked = false;
+		return true;
+	}
+	if (cell == _west) {
+		_westLinked = false;
+		cell->_eastLinked = false;
+		return true;
+	}
+	return false;
+}
+
+Cell *AbstractGrid::getCell(uint row, uint col) const {
+	if (row < 0 || row >= _rows || col < 0 || col >= _cols)
+		return nullptr;
+	return &_grid[row * _rows + col];
+}
+
+Cell *AbstractGrid::pickRandom() {
+	if (_grid == nullptr)
+		return nullptr;
+	uint row = _rnd() % _rows;
+	uint col = _rnd() % _cols;
+	return getCell(row, col);
+}
+
+cv::Mat AbstractGrid::saveImage(const cv::String& filename) {
+	cv::Mat image((int)imageWidth(), (int)imageHeight(), CV_8UC3);
+
+	cv::Vec3b white(255, 255, 255);
+	cv::Vec3b black(0, 0, 0);
+
+	for (int i = 0; i < kWallThickness; i++) {
+		for (int j = 0; j < image.cols; j++) {
+			image.at<cv::Vec3b>(cv::Point(j, i)) = white;
 		}
 	}
 
-	virtual void initGrid() = 0;
-	virtual void configureCells() = 0;
-	friend std::ostream& operator<<(std::ostream& out, const AbstractGrid& grid);
+	int row, col;
+	int drawRow, drawCol;
 
-	Cell *getCell( uint row,  uint col) const {
-		if (row < 0 || row >= _rows || col < 0 || col >= _cols)
-			return nullptr;
-		return &_grid[row * _rows + col];
+	for (int i = 0; i < (int)(imageHeight() - kWallThickness); i++) {
+		row = i / kShift;
+		drawRow = i + kWallThickness;
+		
+		for (int j = 0; j < kWallThickness; j++) {
+			image.at<cv::Vec3b>(cv::Point(j, drawRow)) = white;
+		}
+
+		for (int j = 0; j < (int)(imageWidth() - kWallThickness); j++) {
+			col = j / kShift;
+			drawCol = j + kWallThickness;
+
+			if (i % kShift < kPassageThickness) {
+				if (j % kShift < kPassageThickness)
+					image.at<cv::Vec3b>(cv::Point(drawCol, drawRow)) = black;
+				else if (getCell(row, col)->_eastLinked)
+					image.at<cv::Vec3b>(cv::Point(drawCol, drawRow)) = black;
+				else
+					image.at<cv::Vec3b>(cv::Point(drawCol, drawRow)) = white;
+
+			} else {
+				if (j % kShift >= kPassageThickness)
+					image.at<cv::Vec3b>(cv::Point(drawCol, drawRow)) = white;
+				else if (getCell(row, col)->_southLinked)
+					image.at<cv::Vec3b>(cv::Point(drawCol, drawRow)) = black;
+				else
+					image.at<cv::Vec3b>(cv::Point(drawCol, drawRow)) = white;
+			}
+		}
+
 	}
 
-	Cell *pickRandom() {
-		if (_grid == nullptr)
-			return nullptr;
-		 uint row = _rnd() % _rows;
-		 uint col = _rnd() % _cols;
-		return getCell(row, col);
-	}
+	cv::imwrite(filename, image);
 
-	 uint size() { return _rows * _cols; }
-
-	 uint _rows, _cols;
-	
-private:
-	Cell *_grid;
-	std::mt19937 _rnd;
-};
+	return image;
+}
 
 std::ostream& operator<<(std::ostream& out, const AbstractGrid& grid) {
 	out << "+";
@@ -147,105 +147,4 @@ std::ostream& operator<<(std::ostream& out, const AbstractGrid& grid) {
 	}
 
 	return out;
-}
-
-class SimpleGrid : public AbstractGrid {
-public:
-	SimpleGrid() : AbstractGrid() {}
-
-	SimpleGrid(uint _rows, uint _cols) : AbstractGrid(_rows, _cols) {
-		initGrid();
-		configureCells();
-	}
-
-private:
-	void initGrid() {
-		Cell *tmp;
-		for (uint i = 0; i < _rows; i++) {
-			for (uint j = 0; j < _cols; j++) {
-				tmp = getCell(i, j);
-				tmp->_row = i;
-				tmp->_col = j;
-			}
-		}
-	}
-
-	void configureCells() {
-		Cell *tmp;
-		
-		// Top Left
-		tmp = getCell(0, 0);
-		tmp->_east = getCell(0, 1);
-		tmp->_south = getCell(1, 0);
-
-		// Bottom Left
-		tmp = getCell(_rows - 1, 0);
-		tmp->_east = getCell(_rows - 1, 1);
-		tmp->_north = getCell(_rows - 2, 0);
-
-		// Bottom Right
-		tmp = getCell(_rows - 1, _cols - 1);
-		tmp->_west = getCell(_rows - 1, _cols - 2);
-		tmp->_north = getCell(_rows - 2, _cols - 1);
-
-		// Top Left
-		tmp = getCell(0, _cols - 1);
-		tmp->_west = getCell(0, _cols - 2);
-		tmp->_south = getCell(1, _cols - 1);
-
-		// Top Middle
-		for (uint j = 1; j < _cols - 1; j++) {
-			tmp = getCell(0, j);
-			tmp->_east = getCell(0, j - 1);
-			tmp->_west = getCell(0, j + 1);
-			tmp->_south = getCell(1, j);
-		}
-		
-		// Bottom Middle
-		for (uint j = 1; j < _cols - 1; j++) {
-			tmp = getCell(_rows - 1, j);
-			tmp->_east = getCell(_rows - 1, j - 1);
-			tmp->_west = getCell(_rows - 1, j + 1);
-			tmp->_north = getCell(_rows - 2, j);
-		}
-
-		// Left Middle
-		for (uint i = 1; i < _rows - 1; i++) {
-			tmp = getCell(i, 0);
-			tmp->_north = getCell(i - 1, 0);
-			tmp->_south = getCell(i + 1, 0);
-			tmp->_east = getCell(i, 1);
-		}
-
-		// Left Middle
-		for (uint i = 1; i < _rows - 1; i++) {
-			tmp = getCell(i, _cols - 1);
-			tmp->_north = getCell(i - 1, _cols - 1);
-			tmp->_south = getCell(i + 1, _cols - 1);
-			tmp->_west = getCell(i, _cols - 2);
-		}
-
-		// Everything else...
-		for (uint i = 1; i < _rows - 1; i++) {
-			for (uint j = 1; j < _cols - 1; j++) {
-				tmp = getCell(i, j);
-				tmp->_north = getCell(i - 1, j);
-				tmp->_south = getCell(i + 1, j);
-				tmp->_east = getCell(i, j - 1);
-				tmp->_west = getCell(i, j + 1);
-			}
-		}
-	}
-};
-
-int main() {
-	SimpleGrid x(4, 4);
-
-	Cell *ptr = x.getCell(1, 1);
-
-	ptr->link(ptr->_north);
-
-	std::cout << x;
-
-	return 0;
 }
