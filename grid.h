@@ -30,7 +30,7 @@ public:
 
 	bool unlink(Cell *cell);
 
-	bool linked(Cell *cell) {
+	bool linked(Cell *cell) const {
 		return (_northLinked || _southLinked || _eastLinked || _westLinked);
 	}
 
@@ -67,10 +67,10 @@ public:
 
 	cv::Mat saveImage(const cv::String& filename);
 
-	uint size() { return _rows * _cols; }
+	uint size() const { return _rows * _cols; }
 
-	uint imageWidth() { return _rows * kShift + kWallThickness; }
-	uint imageHeight() { return _cols * kShift + kWallThickness; }
+	uint imageWidth() const { return _rows * kShift + kWallThickness; }
+	uint imageHeight() const { return _cols * kShift + kWallThickness; }
 
 	uint _rows, _cols;
 
