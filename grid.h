@@ -62,8 +62,12 @@ public:
 
 	Cell *getCell(uint row, uint col) const;
 
+	uint rand(uint max) {
+		return _rnd() % max;
+	}
 	Cell *pickRandom();
 
+	void clear();
 
 	cv::Mat saveImage(const cv::String& filename);
 

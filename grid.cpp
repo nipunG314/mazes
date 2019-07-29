@@ -67,6 +67,23 @@ Cell *AbstractGrid::pickRandom() {
 	return getCell(row, col);
 }
 
+void AbstractGrid::clear() {
+	Cell *cell;
+	for (uint i = 0; i < _rows; i++) {
+		for (uint j = 0; j < _cols; j++) {
+			cell = getCell(i, j);
+			if (cell->_northLinked)
+				cell->unlink(cell->_north);
+			if (cell->_eastLinked)
+				cell->unlink(cell->_east);
+			if (cell->_southLinked)
+				cell->unlink(cell->_south);
+			if (cell->_westLinked)
+				cell->unlink(cell->_west);
+		}
+	}
+}
+
 cv::Mat AbstractGrid::saveImage(const cv::String& filename) {
 	cv::Mat image((int)imageWidth(), (int)imageHeight(), CV_8UC3);
 
